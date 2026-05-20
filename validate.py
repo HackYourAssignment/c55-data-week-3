@@ -18,5 +18,18 @@ def validate_records(
         raw_record  - the original dict
         error_details - the Pydantic error list (ValidationError.errors())
     """
-    # TODO: iterate over records, try WeatherReading(**record), accumulate results
-    raise NotImplementedError
+    valid_list: list[WeatherReading] = []
+    error_list: list[dict] = []
+    for i, record in enumerate(records):
+        try:
+            valid_list.append(WeatherReading(**record))
+        except ValidationError as e:
+            error_list.append(
+                {
+                    "index": i,
+                    "source": source,
+                    "raw_record": record,
+                    "error_details": e.errors(),
+                }
+            )
+    return valid_list, error_list
