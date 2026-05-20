@@ -19,4 +19,17 @@ def validate_records(
         error_details - the Pydantic error list (ValidationError.errors())
     """
     # TODO: iterate over records, try WeatherReading(**record), accumulate results
-    raise NotImplementedError
+    valid_records = []
+    error_records = []
+    for i, record in enumerate(records):
+        try:
+            validated_record = WeatherReading(**record)
+            valid_records.append(validated_record)
+        except ValidationError as e:
+            error_records.append({
+                "index": i,
+                "source": source,
+                "raw_record": record,
+                "error_details": e.errors()
+            })
+    return valid_records, error_records 

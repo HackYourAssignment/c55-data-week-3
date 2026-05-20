@@ -25,7 +25,23 @@ def create_tables(conn: sqlite3.Connection) -> None:
         + UNIQUE(station, timestamp) constraint for upserts
     """
     # TODO: use conn.execute() with CREATE TABLE IF NOT EXISTS statements
-    raise NotImplementedError
+    conn.execute("""CREATE TABLE IF NOT EXISTS raw_weather (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    station TEXT,
+    timestamp TEXT,
+    temperature_c TEXT,
+    humidity_pct TEXT,
+    source TEXT,
+    ingested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)""")
+    conn.execute("""CREATE TABLE IF NOT EXISTS weather_readings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    station TEXT,
+    timestamp TEXT,
+    temperature_c REAL,
+    humidity_pct INTEGER,
+    UNIQUE(station, timestamp)
+)""")
 
 
 def insert_raw(conn: sqlite3.Connection, records: list[dict], source: str) -> None:
@@ -34,7 +50,19 @@ def insert_raw(conn: sqlite3.Connection, records: list[dict], source: str) -> No
     Use parameterized queries with placeholder syntax; do not build SQL via string formatting.
     """
     # TODO: implement
-    raise NotImplementedError
+    for record in records:
+        conn.execute(
+            """INSERT INTO raw_weather (station, timestamp, temperature_c, humidity_pct, source)
+               VALUES (?, ?, ?, ?, ?)""",
+            (
+                record.get("station"),
+                record.get("timestamp"),
+                record.get("temperature_c"),
+                record.get("humidity_pct"),
+                source,
+            )
+        )       
+    
 
 
 def upsert_readings(conn: sqlite3.Connection, readings: list[WeatherReading]) -> None:
@@ -44,10 +72,27 @@ def upsert_readings(conn: sqlite3.Connection, readings: list[WeatherReading]) ->
     Use parameterized queries.
     """
     # TODO: implement
-    raise NotImplementedError
+    for reading in readings:
+            conn.execute(
+                """INSERT INTO weather_readings (station, timestamp, temperature_c, humidity_pct)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(station, timestamp) DO UPDATE SET
+                    temperature_c=excluded.temperature_c,
+                    humidity_pct=excluded.humidity_pct""",
+                (
+                    reading.station,
+                    reading.timestamp,
+                    reading.temperature_c,
+                    reading.humidity_pct,
+                )
+            )       
+    
 
 
 def count_readings(conn: sqlite3.Connection) -> int:
     """Return the total number of rows in weather_readings."""
     # TODO: implement
-    raise NotImplementedError
+    cursor = conn.execute("SELECT COUNT(*) FROM weather_readings")
+    count = cursor.fetchone()[0]
+    return count        
+    

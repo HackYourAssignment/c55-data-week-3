@@ -19,7 +19,22 @@ def fetch_with_retry(url: str, params: dict, max_retries: int = 3, timeout: int 
     Log each retry attempt with the error and delay.
     """
     # TODO: implement retry loop with exponential backoff
-    raise NotImplementedError
+    for attempt in range(1, max_retries + 1):
+        try:
+            response = requests.get(url, params=params, timeout=timeout)
+            if response.status_code >= 500:
+                raise requests.HTTPError(f"Server error: {response.status_code}")
+            elif response.status_code >= 400:
+                response.raise_for_status()  # Will raise HTTPError for 4xx
+            return response.json()
+        except (requests.ConnectionError, requests.Timeout, requests.HTTPError) as e:
+            if attempt == max_retries or isinstance(e, requests.HTTPError) and e.response.status_code < 500:
+                logger.error(f"Request failed after {attempt} attempts: {e}")
+                raise
+            delay = 2 ** (attempt - 1)  # Exponential backoff: 1s, 2s, 4s...
+            logger.warning(f"Request error: {e}. Retrying in {delay} seconds... (Attempt {attempt}/{max_retries})")
+            time.sleep(delay)
+    raise RuntimeError("Exceeded maximum retry attempts")
 
 
 def fetch_api_records() -> list[dict]:
@@ -38,4 +53,23 @@ def fetch_api_records() -> list[dict]:
     # - Call fetch_with_retry with API_URL and params
     # - The API returns {"hourly": {"time": [...], "temperature_2m": [...], "relative_humidity_2m": [...]}}
     # - Flatten to a list of dicts; set station="Open-Meteo Copenhagen" for all records
-    raise NotImplementedError
+    for attempt in range(1, 4):
+        try:
+            data = fetch_with_retry(API_URL, params)
+            hourly = data.get("hourly", {})
+            times = hourly.get("time", [])
+            temps = hourly.get("temperature_2m", [])
+            hums = hourly.get("relative_humidity_2m", [])
+            records = []
+            for time_str, temp, hum in zip(times, temps, hums):
+                records.append({
+                    "station": "Open-Meteo Copenhagen",
+                    "timestamp": time_str,
+                    "temperature_c": temp,
+                    "humidity_pct": hum,
+                })
+            return records
+        except Exception as e:
+            logger.error(f"Failed to fetch API records: {e}")
+            return []
+    raise RuntimeError("Exceeded maximum retry attempts")

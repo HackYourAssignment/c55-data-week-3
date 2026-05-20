@@ -18,6 +18,53 @@ CSV_PATH = Path("data/weather_stations.csv")
 def run_pipeline() -> None:
     OUTPUT_DIR.mkdir(exist_ok=True)
 
+    # step 1 - fetch from API
+    api_records = fetch_api_records()
+
+    # step 2 - read from CSV
+    csv_records = read_csv_records(CSV_PATH)
+
+    # step 3 - combine both
+    all_records = api_records + csv_records
+
+    # step 4 - open database once
+    conn = get_connection()
+    create_tables(conn)
+
+    # step 5 - insert all raw records
+    insert_raw(conn, api_records, "api")
+    insert_raw(conn, csv_records, "csv")
+    conn.commit()
+
+    # step 6 - validate all records
+    valid_api, errors_api = validate_records(api_records, "api")
+    valid_csv, errors_csv = validate_records(csv_records, "csv")
+    valid = valid_api + valid_csv
+    errors = errors_api + errors_csv
+
+    # step 7 - upsert valid records
+    upsert_readings(conn, valid)
+    conn.commit()
+
+    # step 8 - save error report
+    error_report_path = OUTPUT_DIR / "error_report.json"
+    with error_report_path.open("w", encoding="utf-8") as f:
+        json.dump(errors, f, indent=2, default=str)
+
+    # step 9 - print summary
+    print("=== Pipeline Summary ===")
+    print(f"API records fetched: {len(api_records)}")
+    print(f"CSV records read: {len(csv_records)}")
+    print(f"Total raw records: {len(all_records)}")
+    print(f"Valid records: {len(valid)}")
+    print(f"Invalid records: {len(errors)}")
+    print(f"Records in database: {count_readings(conn)}")
+    print(f"Error report: {error_report_path}")
+
+    conn.close()
+
+
+
     # TODO — implement each step in order:
     #
     # 1. Fetch records from Open-Meteo API using fetch_api_records()
@@ -43,7 +90,6 @@ def run_pipeline() -> None:
     #    Records in database: 169
     #    Error report: output/error_report.json
 
-    raise NotImplementedError
 
 
 if __name__ == "__main__":
