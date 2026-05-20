@@ -24,8 +24,32 @@ def create_tables(conn: sqlite3.Connection) -> None:
     weather_readings columns: id, station, timestamp, temperature_c, humidity_pct
         + UNIQUE(station, timestamp) constraint for upserts
     """
-    # TODO: use conn.execute() with CREATE TABLE IF NOT EXISTS statements
-    raise NotImplementedError
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS raw_weather (
+            id INTEGER PRIMARY KEY,
+            station TEXT NOT NULL,
+            timestamp TEXT NOT NULL,
+            temperature_c REAL NOT NULL,
+            humidity_pct REAL NOT NULL,
+            source TEXT NOT NULL,
+            ingested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS weather_readings (
+            id INTEGER PRIMARY KEY,
+            station TEXT NOT NULL,
+            timestamp TEXT NOT NULL,
+            temperature_c REAL NOT NULL,
+            humidity_pct REAL NOT NULL,
+            UNIQUE(station, timestamp)
+        )
+        """
+    )
+    conn.commit()
 
 
 def insert_raw(conn: sqlite3.Connection, records: list[dict], source: str) -> None:
@@ -33,8 +57,21 @@ def insert_raw(conn: sqlite3.Connection, records: list[dict], source: str) -> No
 
     Use parameterized queries with placeholder syntax; do not build SQL via string formatting.
     """
-    # TODO: implement
-    raise NotImplementedError
+    for record in records:
+        conn.execute(
+            """
+            INSERT INTO raw_weather (station, timestamp, temperature_c, humidity_pct, source)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (
+                record["station"],
+                record["timestamp"],
+                record["temperature_c"],
+                record["humidity_pct"],
+                source,
+            ),
+        )
+    conn.commit()
 
 
 def upsert_readings(conn: sqlite3.Connection, readings: list[WeatherReading]) -> None:
@@ -43,11 +80,25 @@ def upsert_readings(conn: sqlite3.Connection, readings: list[WeatherReading]) ->
     Use the upsert pattern to handle duplicate (station, timestamp) pairs.
     Use parameterized queries.
     """
-    # TODO: implement
-    raise NotImplementedError
+    for reading in readings:
+        conn.execute(
+            """
+            INSERT INTO weather_readings (station, timestamp, temperature_c, humidity_pct)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(station, timestamp) DO UPDATE SET
+                temperature_c = excluded.temperature_c,
+                humidity_pct = excluded.humidity_pct
+            """,
+            (
+                reading.station,
+                reading.timestamp,
+                reading.temperature_c,
+                reading.humidity_pct,
+            ),
+        )
+    conn.commit()
 
 
 def count_readings(conn: sqlite3.Connection) -> int:
     """Return the total number of rows in weather_readings."""
-    # TODO: implement
-    raise NotImplementedError
+    return conn.execute("SELECT COUNT(*) FROM weather_readings").fetchone()[0]
