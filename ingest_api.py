@@ -1,9 +1,9 @@
 # Step 2 — Tasks 1 & 2: Error Handling + API Ingestion
 # fetch_with_retry handles transient network errors (Task 1).
 # fetch_api_records calls it and shapes the response into flat dicts (Task 2).
+from asyncio import timeout
 import logging
 import time
-
 import requests
 
 logger = logging.getLogger(__name__)
@@ -18,8 +18,29 @@ def fetch_with_retry(url: str, params: dict, max_retries: int = 3, timeout: int 
     Fail immediately on: 4xx status codes.
     Log each retry attempt with the error and delay.
     """
-    # TODO: implement retry loop with exponential backoff
-    raise NotImplementedError
+
+    for attempt in range(max_retries + 1):
+        try:
+            response = requests.get(url, params=params, timeout=timeout)
+
+            if 400 <= response.status_code < 500:
+                response.raise_for_status()
+
+            if response.status_code >= 500:
+                raise requests.HTTPError(f"Server error: {response.status_code}", response=response)
+
+            return response.json()
+        except (requests.ConnectionError, requests.Timeout, requests.HTTPError) as e:
+            is_last_attempt = attempt == max_retries
+            if isinstance(e, requests.HTTPError):
+                response = e.response
+                if response is not None and 400 <= response.status_code < 500:
+                    raise  # Do not retry on client errors
+            if is_last_attempt:
+                raise
+            delay = 2 ** attempt
+            logger.warning("Retry %s%s after error: %s. waiting %s seconds.", attempt + 1, max_retries, e, delay)
+            time.sleep(delay)
 
 
 def fetch_api_records() -> list[dict]:
@@ -38,4 +59,20 @@ def fetch_api_records() -> list[dict]:
     # - Call fetch_with_retry with API_URL and params
     # - The API returns {"hourly": {"time": [...], "temperature_2m": [...], "relative_humidity_2m": [...]}}
     # - Flatten to a list of dicts; set station="Open-Meteo Copenhagen" for all records
-    raise NotImplementedError
+    data = fetch_with_retry(API_URL, params)
+    hourly = data.get("hourly", {})
+    times = hourly.get("time", [])
+    temperatures = hourly.get("temperature_2m", [])
+    humidities = hourly.get("relative_humidity_2m", [])
+
+    if not times:
+        return []
+    records= []
+    for time, temp, humidity in zip(times, temperatures, humidities):
+        records.append({
+            "station": "Open-Meteo Copenhagen",
+            "timestamp": time,
+            "temperature_c": temp,
+            "humidity_pct": humidity
+        })
+    return records

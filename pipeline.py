@@ -43,7 +43,40 @@ def run_pipeline() -> None:
     #    Records in database: 169
     #    Error report: output/error_report.json
 
-    raise NotImplementedError
+    api_records = fetch_api_records()
+    csv_records = read_csv_records(CSV_PATH)
+
+    with get_connection() as conn:
+        create_tables(conn)
+
+
+        insert_raw(conn, api_records, "api")
+        insert_raw(conn, csv_records, "csv")
+
+        vaild_api, error_api = validate_records(api_records, "api")
+        vaild_csv, error_csv = validate_records(csv_records, "csv")
+
+        valid_records = vaild_api + vaild_csv
+        error_records = error_api + error_csv
+
+        upsert_readings(conn, valid_records)
+        
+        db_count = count_readings(conn)
+    
+    error_report_path = OUTPUT_DIR / "error_report.json"
+    with error_report_path.open("w", encoding="utf-8") as f:
+        json.dump(error_records, f, indent=2)
+    print("=== Pipeline Summary ===")
+    print(f"API records fetched: {len(api_records)}")
+    print(f"CSV records read: {len(csv_records)}")
+    print(f"Total raw records: {len(api_records) + len(csv_records)}")
+    print(f"Valid records: {len(valid_records)}")
+    print(f"Invalid records: {len(error_records)}")
+    print(f"Records in database: {db_count}")
+    print(f"Error report: {error_report_path}")
+
+
+         
 
 
 if __name__ == "__main__":

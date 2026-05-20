@@ -5,6 +5,21 @@ import csv
 from pathlib import Path
 
 
+def convert_float(value: str) -> float:
+    """Convert value to float, or return original if conversion fails."""
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        return value
+    
+
+def convert_int(value: str) -> int:
+    """Convert value to int, or return original if conversion fails."""
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return value
+
 def read_csv_records(path: Path) -> list[dict]:
     """Read weather_stations.csv and return normalized records.
 
@@ -17,4 +32,16 @@ def read_csv_records(path: Path) -> list[dict]:
     - Leave unconvertible values (e.g. "N/A", "") as-is so validation can catch them.
     """
     # TODO: implement CSV reading and normalization
-    raise NotImplementedError
+    records = []
+
+    with path.open(newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            records.append({
+                "station": row.get("station", ""),
+                "timestamp": row.get("timestamp", ""),
+                "temperature_c": convert_float(row.get("temperature_c", "")),
+                "humidity_pct": convert_int(row.get("humidity_pct", "")),
+                })
+             
+    return records
