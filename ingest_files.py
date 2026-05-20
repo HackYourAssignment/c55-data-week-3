@@ -6,15 +6,32 @@ from pathlib import Path
 
 
 def read_csv_records(path: Path) -> list[dict]:
-    """Read weather_stations.csv and return normalized records.
+    """Read weather_stations.csv and return normalized records."""
 
-    Returns a list of dicts with keys: station, timestamp, temperature_c, humidity_pct.
+    records = []
 
-    Rules:
-    - Open with newline="" and encoding="utf-8".
-    - Use csv.DictReader.
-    - Convert temperature_c to float and humidity_pct to int where possible.
-    - Leave unconvertible values (e.g. "N/A", "") as-is so validation can catch them.
-    """
-    # TODO: implement CSV reading and normalization
-    raise NotImplementedError
+    with open(path, newline="", encoding="utf-8") as file:
+        reader = csv.DictReader(file)
+
+        for row in reader:
+
+            record = {
+                "station": row.get("station"),
+                "timestamp": row.get("timestamp"),
+                "temperature_c": row.get("temperature_c"),
+                "humidity_pct": row.get("humidity_pct"),
+            }
+
+            try:
+                record["temperature_c"] = float(record["temperature_c"])
+            except (TypeError, ValueError):
+                pass
+
+            try:
+                record["humidity_pct"] = int(record["humidity_pct"])
+            except (TypeError, ValueError):
+                pass
+
+            records.append(record)
+
+    return records
