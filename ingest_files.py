@@ -1,8 +1,24 @@
+"""File ingestion helpers for reading weather station CSV data."""
 # Step 3 — Task 3: File Reading
 # Read the messy CSV and normalize each row into the same dict format
 # that fetch_api_records() produces, so validate_records() can handle both sources.
 import csv
 from pathlib import Path
+
+def try_parse_float(value: str):
+    """Try to convert value to float; return original value if it fails."""
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return value
+
+
+def try_parse_int(value: str):
+    """Try to convert value to int; return original value if it fails."""
+    try:
+        return int(float(value))
+    except (TypeError, ValueError):
+        return value
 
 
 def read_csv_records(path: Path) -> list[dict]:
@@ -16,5 +32,16 @@ def read_csv_records(path: Path) -> list[dict]:
     - Convert temperature_c to float and humidity_pct to int where possible.
     - Leave unconvertible values (e.g. "N/A", "") as-is so validation can catch them.
     """
-    # TODO: implement CSV reading and normalization
-    raise NotImplementedError
+
+    records: list[dict] = []
+    with path.open("r", newline="", encoding="utf-8") as file:
+        reader = csv.DictReader(file)
+        for row in reader:
+            record = {
+                "station": row.get("station"),
+                "timestamp": row.get("timestamp"),
+                "temperature_c": try_parse_float(row.get("temperature_c")),
+                "humidity_pct": try_parse_int(row.get("humidity_pct")),
+            }
+            records.append(record)
+    return records

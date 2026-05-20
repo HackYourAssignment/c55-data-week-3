@@ -1,3 +1,4 @@
+"""SQLite database helpers for the weather ingestion pipeline."""
 # Step 5 — Task 5: Database Storage
 # create_tables()  — run once at startup to set up raw_weather and weather_readings.
 # insert_raw()     — store every record before validation so nothing is lost.
@@ -12,6 +13,11 @@ DB_PATH = Path("weather.db")
 
 
 def get_connection() -> sqlite3.Connection:
+    """Get a connection to the SQLite database.
+        - Use DB_PATH constant for the database file path.
+        - Set row_factory to sqlite3.Row for dict-like access to query results.
+    """
+
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
@@ -24,8 +30,27 @@ def create_tables(conn: sqlite3.Connection) -> None:
     weather_readings columns: id, station, timestamp, temperature_c, humidity_pct
         + UNIQUE(station, timestamp) constraint for upserts
     """
-    # TODO: use conn.execute() with CREATE TABLE IF NOT EXISTS statements
-    raise NotImplementedError
+
+    conn.execute("""CREATE TABLE IF NOT EXISTS raw_weather (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    station TEXT NOT NULL,
+    timestamp DATETIME NOT NULL,
+    temperature_c REAL,
+    humidity_pct REAL,
+    source TEXT NOT NULL,
+    ingested_at DATETIME DEFAULT CURRENT_TIMESTAMP
+)""")
+
+    conn.execute("""CREATE TABLE IF NOT EXISTS weather_readings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    station TEXT NOT NULL,
+    timestamp DATETIME NOT NULL,
+    temperature_c REAL,
+    humidity_pct REAL,
+    UNIQUE(station, timestamp)
+)""")
+    conn.commit()
+
 
 
 def insert_raw(conn: sqlite3.Connection, records: list[dict], source: str) -> None:
@@ -33,8 +58,32 @@ def insert_raw(conn: sqlite3.Connection, records: list[dict], source: str) -> No
 
     Use parameterized queries with placeholder syntax; do not build SQL via string formatting.
     """
-    # TODO: implement
-    raise NotImplementedError
+
+    rows = [
+        (
+            record.get("station"),
+            record.get("timestamp"),
+            record.get("temperature_c"),
+            record.get("humidity_pct"),
+            source,
+        )
+        for record in records
+    ]
+
+    conn.executemany(
+        """
+        INSERT INTO raw_weather (
+            station,
+            timestamp,
+            temperature_c,
+            humidity_pct,
+            source
+        )
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        rows,
+    )
+    conn.commit()
 
 
 def upsert_readings(conn: sqlite3.Connection, readings: list[WeatherReading]) -> None:
@@ -43,11 +92,33 @@ def upsert_readings(conn: sqlite3.Connection, readings: list[WeatherReading]) ->
     Use the upsert pattern to handle duplicate (station, timestamp) pairs.
     Use parameterized queries.
     """
-    # TODO: implement
-    raise NotImplementedError
+
+    rows = [
+            (
+                reading.station,
+                reading.timestamp,
+                reading.temperature_c,
+                reading.humidity_pct,
+            )
+            for reading in readings
+        ]
+    conn.executemany(
+        """
+        INSERT INTO weather_readings (
+            station,
+            timestamp,
+            temperature_c,
+            humidity_pct
+        ) VALUES (?, ?, ?, ?)
+        ON CONFLICT(station, timestamp) DO UPDATE SET
+            temperature_c=excluded.temperature_c,
+            humidity_pct=excluded.humidity_pct
+        """, rows)
+    conn.commit()
 
 
 def count_readings(conn: sqlite3.Connection) -> int:
     """Return the total number of rows in weather_readings."""
-    # TODO: implement
-    raise NotImplementedError
+
+    row = conn.execute("SELECT COUNT(*) AS count FROM weather_readings").fetchone()
+    return int(row["count"])
