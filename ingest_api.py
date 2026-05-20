@@ -19,7 +19,38 @@ def fetch_with_retry(url: str, params: dict, max_retries: int = 3, timeout: int 
     Log each retry attempt with the error and delay.
     """
     # TODO: implement retry loop with exponential backoff
-    raise NotImplementedError
+    attempt =0
+
+    while attempt <= max_retries:
+        try:
+            logger.info(f"Attempt {attempt + 1} to fetch data")
+
+            response = requests.get(url, params=params, timeout=timeout)
+
+            if 400 <= response.status_code < 500:
+                logger.error(f"Client error {response.status_code}: {response.text}")
+                return None
+
+            if response.status_code >= 500:
+                raise requests.exceptions.HTTPError(f"Server error {response.status_code}")
+
+            return response.json()
+
+        except (requests.exceptions.ConnectionError,
+                requests.exceptions.Timeout,
+                requests.exceptions.HTTPError) as e:
+            
+            logger.warning(f"Error on attempt {attempt + 1}: {e}")
+
+            attempt += 1
+
+            if attempt > max_retries:
+                logger.error("Max retries reached. Giving up.")
+                return None
+
+            sleep_time = 2 ** attempt
+            logger.info(f"Retrying in {sleep_time} seconds...")
+            time.sleep(sleep_time)
 
 
 def fetch_api_records() -> list[dict]:
@@ -38,4 +69,39 @@ def fetch_api_records() -> list[dict]:
     # - Call fetch_with_retry with API_URL and params
     # - The API returns {"hourly": {"time": [...], "temperature_2m": [...], "relative_humidity_2m": [...]}}
     # - Flatten to a list of dicts; set station="Open-Meteo Copenhagen" for all records
-    raise NotImplementedError
+    data = fetch_with_retry(API_URL, params)
+
+    if not data or "hourly" not in data:
+        logger.warning("No data returned from API")
+        return []
+
+    hourly = data["hourly"]
+
+    times = hourly.get("time", [])
+    print(len(times))
+    temps = hourly.get("temperature_2m", [])
+    humidity = hourly.get("relative_humidity_2m", [])
+
+    records = []
+
+    for i in range(len(times)):
+        record = {
+            "station": "Open-Meteo Copenhagen",
+            "timestamp": times[i],
+            "temperature_c": temps[i] if i < len(temps) else None,
+            "humidity_pct": humidity[i] if i < len(humidity) else None,
+        }
+        records.append(record)
+
+    return records
+    
+if __name__ == "__main__":
+     #print("RUNNING FILE...")
+     logging.basicConfig(level=logging.INFO)
+
+     records = fetch_api_records()
+     print(f"Fetched {len(records)} records")
+     
+     print(records[:2])  
+
+     

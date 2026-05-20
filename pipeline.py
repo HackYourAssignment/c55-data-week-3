@@ -43,7 +43,53 @@ def run_pipeline() -> None:
     #    Records in database: 169
     #    Error report: output/error_report.json
 
-    raise NotImplementedError
+     # fetch API data
+    api_records = fetch_api_records()
+
+    # read CSV data
+    csv_records = read_csv_records(CSV_PATH)
+
+    # combine raw data
+    all_raw_records = api_records + csv_records
+
+    # DB setup
+    conn = get_connection()
+    create_tables(conn)
+
+    # insert raw data
+    insert_raw(conn, api_records, source="api")
+    insert_raw(conn, csv_records, source="csv")
+
+    # validate
+    valid_api, invalid_api = validate_records(api_records, "api")
+
+    # validate CSV
+    valid_csv, invalid_csv = validate_records(csv_records, "csv")
+
+# combine
+    valid_records = valid_api + valid_csv
+    invalid_records = invalid_api + invalid_csv
+
+    # 7. Upsert valid records
+    upsert_readings(conn, valid_records)
+
+    # 8. Save error report
+    error_path = OUTPUT_DIR / "error_report.json"
+    with open(error_path, "w", encoding="utf-8") as f:
+        json.dump(invalid_records, f, indent=2, ensure_ascii=False)
+
+    # 9. Count final rows
+    total_db_rows = count_readings(conn)
+
+    # 10. Summary
+    print("\n=== Pipeline Summary ===")
+    print(f"API records fetched: {len(api_records)}")
+    print(f"CSV records read: {len(csv_records)}")
+    print(f"Total raw records: {len(all_raw_records)}")
+    print(f"Valid records: {len(valid_records)}")
+    print(f"Invalid records: {len(invalid_records)}")
+    print(f"Records in database: {total_db_rows}")
+    print(f"Error report: {error_path}")
 
 
 if __name__ == "__main__":
