@@ -6,7 +6,13 @@ import json
 import logging
 from pathlib import Path
 
-from database import count_readings, create_tables, get_connection, insert_raw, upsert_readings
+from database import (
+    count_readings,
+    create_tables,
+    get_connection,
+    insert_raw,
+    upsert_readings,
+)
 from ingest_api import fetch_api_records
 from ingest_files import read_csv_records
 from validate import validate_records
@@ -20,14 +26,38 @@ def run_pipeline() -> None:
 
     # TODO — implement each step in order:
     #
-    # 1. Fetch records from Open-Meteo API using fetch_api_records()
+    api_records = fetch_api_records()
     # 2. Read records from CSV using read_csv_records(CSV_PATH)
+    csv_records = read_csv_records(CSV_PATH)
     # 3. Open a DB connection, create tables, insert all raw records (both sources)
+    conn = get_connection()
+    create_tables(conn)
+    insert_raw(conn, api_records, "Open-Meteo")
+    insert_raw(conn, csv_records, "CSV")
     # 4. Validate all records — collect valid WeatherReading objects and error dicts
+    valid_readings, error_dicts = validate_records(
+        api_records + csv_records, source="combined"
+    )
     # 5. Upsert valid records into weather_readings
+    upsert_readings(conn, valid_readings)
     # 6. Save error dicts as JSON to output/error_report.json
+    with open(OUTPUT_DIR / "error_report.json", "w") as f:
+        json.dump(error_dicts, f)
     # 7. Print the pipeline summary in the format below.
-    #
+    total_raw = len(api_records) + len(csv_records)
+    valid_count = len(valid_readings)
+    invalid_count = len(error_dicts)
+    database_count = count_readings(conn)
+
+    print("=== Pipeline Summary ===")
+    print(f"API records fetched: {len(api_records)}")
+    print(f"CSV records read: {len(csv_records)}")
+    print(f"Total raw records: {total_raw}")
+    print(f"Valid records: {valid_count}")
+    print(f"Invalid records: {invalid_count}")
+    print(f"Records in database: {database_count}")
+    print("Error report: output/error_report.json")
+
     # Note: the API count varies by time of day (Open-Meteo returns up to 168 hourly
     # records for 7 forecast days; the exact number depends on the current UTC hour).
     # The CSV contributes 6 invalid records and 4 valid ones; the duplicate Copenhagen
@@ -42,8 +72,6 @@ def run_pipeline() -> None:
     #    Invalid records: 6
     #    Records in database: 169
     #    Error report: output/error_report.json
-
-    raise NotImplementedError
 
 
 if __name__ == "__main__":
