@@ -1,0 +1,13 @@
+{
+  "value": [
+    {
+      "id": "/subscriptions/1120c89d-2a5f-4a15-a582-2ea34f0bb5c3/resourceGroups/rg-hyf-students-readonly",
+      "name": "rg-hyf-students-readonly",
+      "type": "Microsoft.Resources/resourceGroups",
+      "location": "westeurope",
+      "properties": {
+        "provisioningState": "Succeeded"
+      }
+    }
+  ]
+}

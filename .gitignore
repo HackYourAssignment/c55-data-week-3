@@ -26,7 +26,6 @@ env/
 
 # Generated pipeline output (committed templates stay; generated files do not)
 output/error_report.json
-output/azure_resource_groups.json
 weather.db
 
 # Editor and IDE settings
