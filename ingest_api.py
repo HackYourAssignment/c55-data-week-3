@@ -43,7 +43,7 @@ def fetch_with_retry(url: str, params: dict, max_retries: int = 3, timeout: int 
 
        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as error:
        if attempt == max_retries - 1:
-            raise RuntimeError("Failed to fetch weather data after maximum retries") from error
+            raise RuntimeError("Failed to fetch weather data after maximum retries") 
 
             wait_time = 2 ** attempt
             logger.warning(
