@@ -18,5 +18,34 @@ def validate_records(
         raw_record  - the original dict
         error_details - the Pydantic error list (ValidationError.errors())
     """
-    # TODO: iterate over records, try WeatherReading(**record), accumulate results
-    raise NotImplementedError
+    valid_list = []
+    error_list = []
+
+    for index, record in enumerate(records):
+        try:
+            validated_record = WeatherReading(**record)
+            valid_list.append(validated_record)
+        except ValidationError as error:
+            error_list.append(
+                {
+                    "index": index,
+                    "source": source,
+                    "raw_record": record,
+                    "error_details": error.errors(),
+                }
+            )
+
+    return valid_list, error_list
+
+if __name__ == "__main__":
+    from pathlib import Path
+
+    from ingest_files import read_csv_records
+
+    csv_records = read_csv_records(Path("data/weather_stations.csv"))
+
+    valid, errors = validate_records(csv_records, source="csv")
+
+    print(f"Valid records: {len(valid)}")
+    print(f"Invalid records: {len(errors)}")
+    print(errors)
