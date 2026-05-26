@@ -5,6 +5,8 @@ from pydantic import BaseModel, Field, field_validator
 
 
 class WeatherReading(BaseModel):
+    """Pydantic model for validating weather readings."""
+
     station: str = Field(..., min_length=1)
     timestamp: str = Field(..., min_length=1)
     temperature_c: float = Field(..., ge=-90, le=60)
@@ -13,5 +15,6 @@ class WeatherReading(BaseModel):
     @field_validator("station")
     @classmethod
     def clean_station(cls, v: str) -> str:
-        # TODO: strip whitespace and convert to title case
-        raise NotImplementedError
+        """Clean station name by stripping whitespace and converting to title case."""
+
+        return v.strip().title()

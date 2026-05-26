@@ -1,3 +1,4 @@
+"""Pipeline entry point for the Week 3 ingestion assignment."""
 # Step 6 — Task 6: Pipeline Orchestration
 # This is the entry point. It calls every module you built in steps 1–5 in order.
 # Implement run_pipeline() so that `python3 -m pipeline` produces a summary and
@@ -13,12 +14,14 @@ from validate import validate_records
 
 OUTPUT_DIR = Path("output")
 CSV_PATH = Path("data/weather_stations.csv")
+ERROR_REPORT_PATH = OUTPUT_DIR / "error_report.json"
 
 
 def run_pipeline() -> None:
+    """Run the full data pipeline: ingest, validate, store, and report."""
+
     OUTPUT_DIR.mkdir(exist_ok=True)
 
-    # TODO — implement each step in order:
     #
     # 1. Fetch records from Open-Meteo API using fetch_api_records()
     # 2. Read records from CSV using read_csv_records(CSV_PATH)
@@ -43,7 +46,35 @@ def run_pipeline() -> None:
     #    Records in database: 169
     #    Error report: output/error_report.json
 
-    raise NotImplementedError
+    api_records = fetch_api_records()
+    csv_records = read_csv_records(CSV_PATH)
+
+    api_valid, api_errors = validate_records(api_records, source="api")
+    csv_valid, csv_errors = validate_records(csv_records, source="csv")
+
+    valid_records = api_valid + csv_valid
+    error_records = api_errors + csv_errors
+
+    with get_connection() as conn:
+        create_tables(conn)
+        insert_raw(conn, api_records, source="api")
+        insert_raw(conn, csv_records, source="csv")
+        upsert_readings(conn, valid_records)
+        total_in_database = count_readings(conn)
+
+    ERROR_REPORT_PATH.write_text(
+        json.dumps(error_records, indent=2),
+        encoding="utf-8",
+    )
+
+    print("=== Pipeline Summary ===")
+    print(f"API records fetched: {len(api_records)}")
+    print(f"CSV records read: {len(csv_records)}")
+    print(f"Total raw records: {len(api_records) + len(csv_records)}")
+    print(f"Valid records: {len(valid_records)}")
+    print(f"Invalid records: {len(error_records)}")
+    print(f"Records in database: {total_in_database}")
+    print(f"Error report: {ERROR_REPORT_PATH}")
 
 
 if __name__ == "__main__":
