@@ -18,8 +18,62 @@ def fetch_with_retry(url: str, params: dict, max_retries: int = 3, timeout: int 
     Fail immediately on: 4xx status codes.
     Log each retry attempt with the error and delay.
     """
-    # TODO: implement retry loop with exponential backoff
-    raise NotImplementedError
+    for attempt in range(max_retries + 1):
+        try:
+            response = requests.get(url, params=params, timeout=timeout)
+
+            if 400 <= response.status_code < 500:
+                response.raise_for_status()
+
+            if 500 <= response.status_code < 600:
+                raise requests.exceptions.HTTPError(
+                    f"Server error {response.status_code}",
+                    response=response,
+                )
+
+            response.raise_for_status()
+            return response.json()
+
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as error:
+            if attempt == max_retries:
+                logger.error("Request failed after %s retries: %s", max_retries, error)
+                raise
+
+            delay = 2 ** attempt
+            logger.warning(
+                "Transient network error on attempt %s/%s: %s. Retrying in %s seconds.",
+                attempt + 1,
+                max_retries + 1,
+                error,
+                delay,
+            )
+            time.sleep(delay)
+
+        except requests.exceptions.HTTPError as error:
+            status_code = None
+
+            if error.response is not None:
+                status_code = error.response.status_code
+
+            if status_code is not None and 500 <= status_code < 600:
+                if attempt == max_retries:
+                    logger.error("Server error after %s retries: %s", max_retries, error)
+                    raise
+
+                delay = 2 ** attempt
+                logger.warning(
+                    "Server error on attempt %s/%s: %s. Retrying in %s seconds.",
+                    attempt + 1,
+                    max_retries + 1,
+                    error,
+                    delay,
+                )
+                time.sleep(delay)
+            else:
+                logger.error("Permanent HTTP error, not retrying: %s", error)
+                raise
+
+    raise RuntimeError("fetch_with_retry exited unexpectedly")
 
 
 def fetch_api_records() -> list[dict]:
@@ -34,8 +88,39 @@ def fetch_api_records() -> list[dict]:
         "hourly": "temperature_2m,relative_humidity_2m",
         "forecast_days": 7,
     }
-    # TODO:
-    # - Call fetch_with_retry with API_URL and params
-    # - The API returns {"hourly": {"time": [...], "temperature_2m": [...], "relative_humidity_2m": [...]}}
-    # - Flatten to a list of dicts; set station="Open-Meteo Copenhagen" for all records
-    raise NotImplementedError
+    data = fetch_with_retry(API_URL, params=params)
+
+    hourly = data.get("hourly")
+
+    if not hourly:
+        return []
+
+    times = hourly.get("time", [])
+    temperatures = hourly.get("temperature_2m", [])
+    humidities = hourly.get("relative_humidity_2m", [])
+
+    if not times or not temperatures or not humidities:
+        return []
+
+    records = []
+
+    for index in range(min(len(times), len(temperatures), len(humidities))):
+        record = {
+            "station": "Open-Meteo Copenhagen",
+            "timestamp": times[index],
+            "temperature_c": temperatures[index],
+            "humidity_pct": humidities[index],
+        }
+
+        records.append(record)
+
+    return records
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+
+    api_records = fetch_api_records()
+
+    print(f"API records fetched: {len(api_records)}")
+    print(api_records[:3])
