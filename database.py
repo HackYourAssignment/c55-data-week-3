@@ -31,24 +31,32 @@ def create_tables(conn: sqlite3.Connection) -> None:
         + UNIQUE(station, timestamp) constraint for upserts
     """
 
-    conn.execute("""CREATE TABLE IF NOT EXISTS raw_weather (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    station TEXT NOT NULL,
-    timestamp DATETIME NOT NULL,
-    temperature_c REAL,
-    humidity_pct REAL,
-    source TEXT NOT NULL,
-    ingested_at DATETIME DEFAULT CURRENT_TIMESTAMP
-)""")
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS raw_weather (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            station TEXT NOT NULL,
+            timestamp DATETIME NOT NULL,
+            temperature_c REAL,
+            humidity_pct REAL,
+            source TEXT NOT NULL,
+            ingested_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
 
-    conn.execute("""CREATE TABLE IF NOT EXISTS weather_readings (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    station TEXT NOT NULL,
-    timestamp DATETIME NOT NULL,
-    temperature_c REAL,
-    humidity_pct REAL,
-    UNIQUE(station, timestamp)
-)""")
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS weather_readings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            station TEXT NOT NULL,
+            timestamp DATETIME NOT NULL,
+            temperature_c REAL,
+            humidity_pct REAL,
+            UNIQUE(station, timestamp)
+        )
+        """
+    )
     conn.commit()
 
 
