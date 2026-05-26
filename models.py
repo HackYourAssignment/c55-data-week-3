@@ -1,4 +1,3 @@
-"""Pydantic models for validated weather readings."""
 # Step 1 — Task 4: Pydantic Validation
 # Define the WeatherReading model that every ingested record must pass.
 # Both the API and CSV data flow through this model before reaching the database.
