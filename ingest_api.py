@@ -30,15 +30,14 @@ def fetch_with_retry(url: str, params: dict, max_retries: int = 3, timeout: int 
 
             return response.json()
         except (requests.ConnectionError, requests.Timeout, requests.HTTPError) as e:
-            is_last_attempt = attempt == max_retries
             if isinstance(e, requests.HTTPError):
                 response = e.response
                 if response is not None and 400 <= response.status_code < 500:
                     raise  # Do not retry on client errors
-            if is_last_attempt:
+            if attempt == max_retries:
                 raise
             delay = 2 ** attempt
-            logger.warning("Retry %s%s after error: %s. waiting %s seconds.", attempt + 1, max_retries, e, delay)
+            logger.warning("Retry %s/%s after error: %s. waiting %s seconds.", attempt + 1, max_retries, e, delay)
             time.sleep(delay)
 
 
