@@ -4,12 +4,12 @@ Fill in each section below (2-3 sentences each) after completing the Task 7 step
 
 ## Auth
 
-<!-- Fill in here -->
+<!--  Azure Resource Manager uses Bearer token authentication, while Open-Meteo is a public API that does not require authentication. -->
 
 ## Schema verbosity
 
-<!-- Fill in here -->
+<!--The Azure response is much more nested and verbose, while the Open-Meteo response is simpler and uses flat hourly arrays.-->
 
 ## api-version in the URL
 
-<!-- Fill in here -->
+<!-- Azure requires an `api-version` in the URL so clients use a stable version of the API; without it, the request may fail or return incompatible results. -->
