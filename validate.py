@@ -18,7 +18,6 @@ def validate_records(
         raw_record  - the original dict
         error_details - the Pydantic error list (ValidationError.errors())
     """
-    # TODO: iterate over records, try WeatherReading(**record), accumulate results
     valid = []
     errors = []
     for index, record in enumerate(records):

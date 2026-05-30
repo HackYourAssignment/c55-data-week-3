@@ -31,7 +31,6 @@ def read_csv_records(path: Path) -> list[dict]:
     - Convert temperature_c to float and humidity_pct to int where possible.
     - Leave unconvertible values (e.g. "N/A", "") as-is so validation can catch them.
     """
-    # TODO: implement CSV reading and normalization
     records = []
 
     with path.open(newline="", encoding="utf-8") as f:

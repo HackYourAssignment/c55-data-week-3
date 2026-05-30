@@ -17,32 +17,6 @@ CSV_PATH = Path("data/weather_stations.csv")
 
 def run_pipeline() -> None:
     OUTPUT_DIR.mkdir(exist_ok=True)
-
-    # TODO — implement each step in order:
-    #
-    # 1. Fetch records from Open-Meteo API using fetch_api_records()
-    # 2. Read records from CSV using read_csv_records(CSV_PATH)
-    # 3. Open a DB connection, create tables, insert all raw records (both sources)
-    # 4. Validate all records — collect valid WeatherReading objects and error dicts
-    # 5. Upsert valid records into weather_readings
-    # 6. Save error dicts as JSON to output/error_report.json
-    # 7. Print the pipeline summary in the format below.
-    #
-    # Note: the API count varies by time of day (Open-Meteo returns up to 168 hourly
-    # records for 7 forecast days; the exact number depends on the current UTC hour).
-    # The CSV contributes 6 invalid records and 4 valid ones; the duplicate Copenhagen
-    # row is valid and exercises the upsert path rather than the validation error path.
-    # Your actual output will look similar to this example:
-    #
-    #    === Pipeline Summary ===
-    #    API records fetched: 166
-    #    CSV records read: 10
-    #    Total raw records: 176
-    #    Valid records: 170
-    #    Invalid records: 6
-    #    Records in database: 169
-    #    Error report: output/error_report.json
-
     api_records = fetch_api_records()
     csv_records = read_csv_records(CSV_PATH)
 
@@ -53,10 +27,10 @@ def run_pipeline() -> None:
         insert_raw(conn, api_records, "api")
         insert_raw(conn, csv_records, "csv")
 
-        vaild_api, error_api = validate_records(api_records, "api")
-        vaild_csv, error_csv = validate_records(csv_records, "csv")
+        valid_api, error_api = validate_records(api_records, "api")
+        valid_csv, error_csv = validate_records(csv_records, "csv")
 
-        valid_records = vaild_api + vaild_csv
+        valid_records = valid_api + valid_csv
         error_records = error_api + error_csv
 
         upsert_readings(conn, valid_records)

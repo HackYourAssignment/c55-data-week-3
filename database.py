@@ -24,12 +24,12 @@ def create_tables(conn: sqlite3.Connection) -> None:
     weather_readings columns: id, station, timestamp, temperature_c, humidity_pct
         + UNIQUE(station, timestamp) constraint for upserts
     """
-    # TODO: use conn.execute() with CREATE TABLE IF NOT EXISTS statements
+
     conn.execute("""
     CREATE TABLE IF NOT EXISTS raw_weather (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        station TEXT,
-        timestamp TEXT,
+        station TEXT NOT NULL,
+        timestamp TEXT NOT NULL,
         temperature_c REAL,
         humidity_pct INTEGER,
         source TEXT,
@@ -56,7 +56,7 @@ def insert_raw(conn: sqlite3.Connection, records: list[dict], source: str) -> No
 
     Use parameterized queries with placeholder syntax; do not build SQL via string formatting.
     """
-    # TODO: implement
+    
     with conn:
         conn.executemany("""
         INSERT INTO raw_weather (station, timestamp, temperature_c, humidity_pct, source)
@@ -81,7 +81,7 @@ def upsert_readings(conn: sqlite3.Connection, readings: list[WeatherReading]) ->
     Use the upsert pattern to handle duplicate (station, timestamp) pairs.
     Use parameterized queries.
     """
-    # TODO: implement
+    
     with conn:
         conn.executemany("""
         INSERT INTO weather_readings (station, timestamp, temperature_c, humidity_pct)
@@ -102,6 +102,6 @@ def upsert_readings(conn: sqlite3.Connection, readings: list[WeatherReading]) ->
 
 def count_readings(conn: sqlite3.Connection) -> int:
     """Return the total number of rows in weather_readings."""
-    # TODO: implement
+    
     row = conn.execute("SELECT COUNT(*) AS count FROM weather_readings").fetchone()
     return row["count"] if row else 0

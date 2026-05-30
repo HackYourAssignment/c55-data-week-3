@@ -13,5 +13,4 @@ class WeatherReading(BaseModel):
     @field_validator("station")
     @classmethod
     def clean_station(cls, v: str) -> str:
-        # TODO: strip whitespace and convert to title case
         return v.strip().title()

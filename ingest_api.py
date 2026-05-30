@@ -1,7 +1,6 @@
 # Step 2 — Tasks 1 & 2: Error Handling + API Ingestion
 # fetch_with_retry handles transient network errors (Task 1).
 # fetch_api_records calls it and shapes the response into flat dicts (Task 2).
-from asyncio import timeout
 import logging
 import time
 import requests
@@ -67,11 +66,11 @@ def fetch_api_records() -> list[dict]:
 
     if not times:
         return []
-    records= []
-    for time, temp, humidity in zip(times, temperatures, humidities):
+    records = []
+    for timestamp, temp, humidity in zip(times, temperatures, humidities):
         records.append({
             "station": "Open-Meteo Copenhagen",
-            "timestamp": time,
+            "timestamp": timestamp,
             "temperature_c": temp,
             "humidity_pct": humidity
         })
